@@ -5,7 +5,7 @@ A simple javascript game based on Tetris Attack (SNES)
 |KEY       | ACTION                 |
 |----------|------------------------|
 |UP        | move aim up            |
-|DOWN      | mode aim dow           |
+|DOWN      | move aim dow           |
 |LEFT      | move aim left          |
 |RIGHT     | move aim right         |
 |ENTER     | start game             |
