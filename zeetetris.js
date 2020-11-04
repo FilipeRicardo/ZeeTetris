@@ -1,14 +1,14 @@
-var live = true;
-var playerScore;
-var lineY = 450;
-var aimX = 100;
-var aimY = 405;
-var colors = ["#0142fe","#ff3401","#fef52a","#01ed31","#ff8e0c","#ab4eff"];
-var blocks = [];
-var intGameLoop;
-var intCreateLine;
-var loop = 0;
-var moveAimSound = new Audio("sound.mp3");
+let live = true;
+let playerScore;
+let lineY = 450;
+let aimX = 100;
+let aimY = 405;
+const colors = ["#0142fe","#ff3401","#fef52a","#01ed31","#ff8e0c","#ab4eff"];
+let blocks = [];
+let intGameLoop;
+let intCreateLine;
+let loop = 0;
+const moveAimSound = new Audio("sound.mp3");
 
 function initialize() {
   playerScore = 0;
