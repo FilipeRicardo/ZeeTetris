@@ -1,17 +1,25 @@
-let live = true;
-let playerScore;
-let lineY = 450;
-let aimX = 100;
-let aimY = 405;
+const initialGameState = {
+  live: true,
+  playerScore: 0,
+  loop: 0
+};
+
+const initialPlayer = {
+  aimX: 100,
+  aimY: 405
+};
+
+let gameState = { ...initialGameState };
+let player = { ...initialPlayer };
+
 const colors = ["#0142fe","#ff3401","#fef52a","#01ed31","#ff8e0c","#ab4eff"];
 let blocks = [];
 let intGameLoop;
 let intCreateLine;
-let loop = 0;
 const moveAimSound = new Audio("sound.mp3");
 
 function initialize() {
-  playerScore = 0;
+  gameState.playerScore = 0;
   canvas = document.getElementById("canvas");
   context = canvas.getContext("2d");        
   document.addEventListener('keydown', keyDown);
@@ -30,11 +38,8 @@ function startGame() {
 
 function restartGame() {
   blocks.length = 0; // clear blocks
-  live = true;
-  playerScore = 0;
-  aimX = 100;
-  aimY = 405;
-  loop = 0;
+  gameState = { ...initialGameState };
+  player = { ...initialPlayer };
   startGame();
 }
 
@@ -44,19 +49,19 @@ function shuffle(arr) {
 }
 
 function moveAim(x,y) {
-  aimX += x;
+  player.aimX += x;
   // aim collision low
-  if (aimX < 0 || aimX > 200) {
-    aimX -= x;
+  if (player.aimX < 0 || player.aimX > 200) {
+    player.aimX -= x;
   }
   // aim collision side
-  aimY += y;
-  if (aimY > 450) {
-    aimY -= y;
+  player.aimY += y;
+  if (player.aimY > 450) {
+    player.aimY -= y;
   }
   // aim collision top
-  if (aimY < 0) {
-    aimY += 50;
+  if (player.aimY < 0) {
+    player.aimY += 50;
   }
 }
 
@@ -70,8 +75,7 @@ function moveLines(num) {
 }
 
 function createLine(lines) {
-  //console.debug("loop:" + loop + " resto:" + loop%10);
-  if (loop%10 == 0) {
+  if (gameState.loop%10 == 0) {
     lines = typeof lines !== 'undefined' ? lines : 1;
     for (var line = 0; line < lines; line++) {
       moveLines(5);
@@ -86,14 +90,14 @@ function createLine(lines) {
   } else {
     moveLines(5);
   }
-  loop += 1;
+  gameState.loop += 1;
 }
 
 function reverseBlock() {
   tempBlocks = [];
   for (var i = 0; i < blocks.length; i++) {
     for (var ii = 0; ii < blocks[i].length; ii++) {
-      if (blocks[i][ii][1] == aimY && (blocks[i][ii][0] >= aimX && blocks[i][ii][0] <= aimX + 50)) {
+      if (blocks[i][ii][1] == player.aimY && (blocks[i][ii][0] >= player.aimX && blocks[i][ii][0] <= player.aimX + 50)) {
         tempBlocks.push([i,ii]);
       }
     }
@@ -126,7 +130,7 @@ function checkLive() {
     position = blocks.length - 11
     for (var i = 0; i < blocks[position].length; i++) {
       if (blocks[position][i][2] != "") {
-        live = false;
+        gameState.live = false;
         break;
       }
     }
@@ -173,7 +177,7 @@ function checkExplosion() {
             blocks[i][iii+(ii-ac)][2] = "";
             arr.push([i,iii+(ii-ac)]);
           }
-          playerScore += ((ac+1) * 10);
+          gameState.playerScore += ((ac+1) * 10);
         }
       }
     }
@@ -200,11 +204,11 @@ function checkExplosion() {
             blocks[iii+(position-ac)][i][2] = "";
           }
           if (ac+1 == 3) { 
-            playerScore += ((ac+1) * 10);
+            gameState.playerScore += ((ac+1) * 10);
           } else if (ac+1 == 4) {
-            playerScore += ((ac+1) * 30);
+            gameState.playerScore += ((ac+1) * 30);
           } else if (ac+1 > 4) {
-            playerScore += ((ac+1) * 50);
+            gameState.playerScore += ((ac+1) * 50);
           }
         }
         if (check == false) {
@@ -264,7 +268,7 @@ function drawAim() {
   context.beginPath();
   context.lineWidth = "4";
   context.strokeStyle = "black";
-  context.rect(aimX+2, aimY+2, 96, 46); 
+  context.rect(player.aimX+2, player.aimY+2, 96, 46); 
   context.stroke();
 }
 
@@ -272,7 +276,7 @@ function drawScoreboard() {
   context.fillStyle = "black";
   context.textAlign = 'right';
   context.font = "32pt Tahoma";
-  context.fillText(playerScore, canvas.width - 20, 50);
+  context.fillText(gameState.playerScore, canvas.width - 20, 50);
 }
 
 function gameLoop() {
@@ -297,7 +301,7 @@ function gameLoop() {
   context.fillStyle = "black";
   context.textAlign = 'left';
   context.font = "10pt Arial";
-  context.fillText("X: " + aimX + " Y:" + aimY,5,15);
+  context.fillText("X: " + player.aimX + " Y:" + player.aimY,5,15);
 
   checkLive();
 
@@ -312,7 +316,7 @@ function gameLoop() {
 
   // Game Over
 
-  if (live == false) {
+  if (gameState.live == false) {
     context.fillStyle = "black";
     context.textAlign = 'center';
     context.font = "32pt Arial";
