@@ -18,6 +18,24 @@ let intGameLoop;
 let intCreateLine;
 const moveAimSound = new Audio("sound.mp3");
 
+class Block {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.size = 50;
+  }
+
+  draw(ctx) {
+    ctx.fillStyle = this.color;
+    ctx.fillRect(this.x, this.y, this.size, this.size);
+  }
+
+  moveDown() {
+    this.y += this.size;
+  }
+}
+
 function initialize() {
   gameState.playerScore = 0;
   canvas = document.getElementById("canvas");
@@ -68,7 +86,8 @@ function moveAim(x,y) {
 function moveLines(num) {
   for (var i = 0; i < blocks.length; i++) {
     for (var ii = 0; ii < blocks[i].length; ii++) {
-      blocks[i][ii][1] -= num; 
+      let block = blocks[i][ii];
+      block.y -= num;
     }
   }
   moveAim(0,-num);
@@ -82,7 +101,9 @@ function createLine(lines) {
       tempBlocks = [];
       item_x = 0;
       for (var i = 0; i < 6; i++) {
-        tempBlocks.push([item_x,500,shuffle(colors)[0]]);
+        //tempBlocks.push([item_x,500,shuffle(colors)[0]]);
+        let block = new Block(item_x, 500, shuffle(colors)[0]);
+        tempBlocks.push(block);
         item_x += 50;
       }
       blocks.push(tempBlocks);
@@ -94,31 +115,35 @@ function createLine(lines) {
 }
 
 function reverseBlock() {
-  tempBlocks = [];
-  for (var i = 0; i < blocks.length; i++) {
-    for (var ii = 0; ii < blocks[i].length; ii++) {
-      if (blocks[i][ii][1] == player.aimY && (blocks[i][ii][0] >= player.aimX && blocks[i][ii][0] <= player.aimX + 50)) {
+  let tempBlocks = [];
+  for (let i = 0; i < blocks.length; i++) {
+    for (let ii = 0; ii < blocks[i].length; ii++) {
+      let block = blocks[i][ii];
+      if (block.y == player.aimY && block.x >= player.aimX && block.x <= player.aimX + 50) {
         tempBlocks.push([i,ii]);
       }
     }
   }
-  cor1 = blocks[tempBlocks[0][0]][tempBlocks[0][1]][2];
-  cor2 = blocks[tempBlocks[1][0]][tempBlocks[1][1]][2];
-  console.debug(cor1 + " - " + cor2);
-  //if (cor1 != "grey" && cor2 != "grey") {
-    blocks[tempBlocks[0][0]][tempBlocks[0][1]][2] = cor2;
-    blocks[tempBlocks[1][0]][tempBlocks[1][1]][2] = cor1;
-  //}
+  if (tempBlocks.length >= 2) {
+    let firstBlock = blocks[tempBlocks[0][0]][tempBlocks[0][1]];
+    let secondBlock = blocks[tempBlocks[1][0]][tempBlocks[1][1]];
+    let tempColor = firstBlock.color;
+    firstBlock.color = secondBlock.color;
+    secondBlock.color = tempColor;
+    console.debug(firstBlock.color + " - " + secondBlock.color);
+  }
   moveAimSound.play();
 }
 
 function checkGravity() {
-  for (var i = 0; i < 6; i++) {
-    for (var ii = blocks.length-1; ii > 0; ii--) {
+  for (let i = 0; i < 6; i++) {
+    for (let ii = blocks.length-1; ii > 0; ii--) {
+      let currentBlock = blocks[ii][i];
+      let aboveBlock = blocks[ii - 1][i];
       if (ii > 0) {
-        if (blocks[ii][i][2] == "") {
-          blocks[ii][i][2] = blocks[ii-1][i][2];
-          blocks[ii-1][i][2] = "";
+        if (currentBlock.color === "") {
+          currentBlock.color = aboveBlock.color;
+          aboveBlock.color = "";
         }
       }
     }
@@ -127,9 +152,10 @@ function checkGravity() {
 
 function checkLive() {
   if (blocks.length > 10) {
-    position = blocks.length - 11
-    for (var i = 0; i < blocks[position].length; i++) {
-      if (blocks[position][i][2] != "") {
+    let position = blocks.length - 11;
+    for (let i = 0; i < blocks[position].length; i++) {
+      let block = blocks[position][i];
+      if (block.color !== "") {
         gameState.live = false;
         break;
       }
@@ -139,21 +165,24 @@ function checkLive() {
 
 function explosion(arr) {
   var alpha = 1;
-  intervalo = setInterval(function(){
-    for (var i = 0; i < arr.length; i++) {
-      x = blocks[arr[i][0]][arr[i][1]][0];
-      y = blocks[arr[i][0]][arr[i][1]][1];
-      context.fillStyle = "rgba(128, 128, 128, " + alpha + ")";
-      context.fillRect(x, y, 50, 50);
+  let intervalo = setInterval(function(){
+    for (let i = 0; i < arr.length; i++) {
+      let block = blocks[arr[i][0]][arr[i][1]];
+      let x = block.x;
+      let y = block.y;
+      //context.fillStyle = "rgba(128, 128, 128, " + alpha + ")";
+      context.fillStyle = `rgba(128, 128, 128, ${alpha})`;
+      context.fillRect(x, y, block.size, block.size);
       context.beginPath();
-      context.lineWidth="1";
-      context.strokeStyle="#404040";
-      context.rect(x, y, 50, 50);
+      context.lineWidth = "1";
+      context.strokeStyle = "#404040";
+      context.rect(x, y, block.size, block.size);
       context.stroke();
     }
     if(alpha < 0){
-      for (var i = 0; i < arr.length; i++) {
-        blocks[arr[i][0]][arr[i][1]][2] = "";
+      for (let i = 0; i < arr.length; i++) {
+        let block = blocks[arr[i][0]][arr[i][1]];
+        block.color = "";
       }
       clearInterval(intervalo);
     }
@@ -162,19 +191,21 @@ function explosion(arr) {
 }
 
 function checkExplosion() {
-  arr = [];
-  for (var i = 0; i < blocks.length; i++) {
-    var ac = 0;
-    for (var ii = 0; ii < blocks[i].length; ii++) {
+  let arr = [];
+  for (let i = 0; i < blocks.length; i++) {
+    let ac = 0;
+    for (let ii = 0; ii < blocks[i].length; ii++) {
       if (ii > 0) {
-        if (blocks[i][ii][2] == blocks[i][ii-1][2] && (blocks[i][ii-1][2] != "" && blocks[i][ii-1][2] != "grey")) {
+        let currentBlock = blocks[i][ii];
+        let previousBlock = blocks[i][ii - 1];
+        if (currentBlock.color === previousBlock.color && currentBlock.color !== "" && currentBlock.color !== "grey") {
           ac += 1;
         } else {
           ac = 0;
         }
         if (ac > 1) {
-          for (var iii = 0; iii < ac+1; iii++) {
-            blocks[i][iii+(ii-ac)][2] = "";
+          for (let iii = 0; iii < ac + 1; iii++) {
+            blocks[i][ii - ac + iii].color = "";
             arr.push([i,iii+(ii-ac)]);
           }
           gameState.playerScore += ((ac+1) * 10);
@@ -183,32 +214,30 @@ function checkExplosion() {
     }
   }
   checkGravity();
-  for (var i = 0; i < 6; i++) {
-    var ac = 0;
-    var check = false;
-    for (var ii = 0; ii < blocks.length; ii++) {
+  for (let i = 0; i < 6; i++) {
+    let ac = 0;
+    let check = false;
+    for (let ii = 0; ii < blocks.length; ii++) {
       if (ii > 0) {
-        if (blocks[ii][i][2] == blocks[ii-1][i][2] && blocks[ii-1][i][2] != "") {
+        let currentBlock = blocks[ii][i];
+        let previousBlock = blocks[ii - 1][i];
+        if (currentBlock.color === previousBlock.color && currentBlock.color !== "") {
           ac += 1;
           check = true;
         } else {
           check = false;
         }
-        if (ac > 1 && (!check || ii >= blocks.length-1)) {
-          if (check) {
-            position = ii;
-          } else {
-            position = ii-1;
+        if (ac > 1 && (!check || ii >= blocks.length - 1)) {
+          let position = check ? ii : ii - 1;
+          for (let iii = 0; iii < ac + 1; iii++) {
+            blocks[iii+(position-ac)][i].color = "";
           }
-          for (var iii = 0; iii < ac+1; iii++) {
-            blocks[iii+(position-ac)][i][2] = "";
-          }
-          if (ac+1 == 3) { 
-            gameState.playerScore += ((ac+1) * 10);
-          } else if (ac+1 == 4) {
-            gameState.playerScore += ((ac+1) * 30);
-          } else if (ac+1 > 4) {
-            gameState.playerScore += ((ac+1) * 50);
+          if (ac + 1 === 3) {
+            gameState.playerScore += ((ac + 1) * 10);
+          } else if (ac + 1 === 4) {
+            gameState.playerScore += ((ac + 1) * 30);
+          } else if (ac + 1 > 4) {
+            gameState.playerScore += ((ac + 1) * 50);
           }
         }
         if (check == false) {
@@ -251,13 +280,14 @@ function keyDown(e) {
 function drawBlocks() {
   for (var i = 0; i < blocks.length; i++) {
     for (var ii = 0; ii < blocks[i].length; ii++) {
-      if (blocks[i][ii][2] != "" && blocks[i][ii][2] != "grey") {
-        context.fillStyle = blocks[i][ii][2];
-        context.fillRect(blocks[i][ii][0], blocks[i][ii][1], 50, 50);
+      let block = blocks[i][ii];
+      if (block.color !== "" && block.color !== "grey") {
+        context.fillStyle = block.color;
+        context.fillRect(block.x, block.y, block.size, block.size);
         context.beginPath();
-        context.lineWidth="3";
-        context.strokeStyle="#ffffff";
-        context.rect(blocks[i][ii][0], blocks[i][ii][1], 50, 50);
+        context.lineWidth = "3";
+        context.strokeStyle = "#ffffff";
+        context.rect(block.x, block.y, block.size, block.size);
         context.stroke();
       }
     }
