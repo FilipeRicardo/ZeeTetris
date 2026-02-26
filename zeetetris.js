@@ -61,9 +61,8 @@ function restartGame() {
   startGame();
 }
 
-function shuffle(arr) {
-  for(var j, x, i = arr.length; i; j = Math.floor(Math.random() * i), x = arr[--i], arr[i] = arr[j], arr[j] = x);
-  return arr;
+function randomColor() {
+  return colors[Math.floor(Math.random() * colors.length)];
 }
 
 function moveAim(x,y) {
@@ -98,13 +97,12 @@ function createLine(lines) {
     lines = typeof lines !== 'undefined' ? lines : 1;
     for (var line = 0; line < lines; line++) {
       moveLines(5);
-      tempBlocks = [];
-      item_x = 0;
+      let tempBlocks = [];
+      let itemX = 0;
       for (var i = 0; i < 6; i++) {
-        //tempBlocks.push([item_x,500,shuffle(colors)[0]]);
-        let block = new Block(item_x, 500, shuffle(colors)[0]);
+        let block = new Block(itemX, 500, randomColor());
         tempBlocks.push(block);
-        item_x += 50;
+        itemX += 50;
       }
       blocks.push(tempBlocks);
     }
