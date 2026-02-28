@@ -133,7 +133,7 @@ function reverseBlock() {
   moveAimSound.play();
 }
 
-function checkGravity() {
+function applyGravity() {
   for (let i = 0; i < 6; i++) {
     for (let ii = blocks.length-1; ii > 0; ii--) {
       let currentBlock = blocks[ii][i];
@@ -188,8 +188,7 @@ function explosion(arr) {
   },1000);
 }
 
-function checkExplosion() {
-  let arr = [];
+function executeHorizontalExplosions() {
   for (let i = 0; i < blocks.length; i++) {
     let ac = 0;
     for (let ii = 0; ii < blocks[i].length; ii++) {
@@ -204,14 +203,15 @@ function checkExplosion() {
         if (ac > 1) {
           for (let iii = 0; iii < ac + 1; iii++) {
             blocks[i][ii - ac + iii].color = "";
-            arr.push([i,iii+(ii-ac)]);
           }
           gameState.playerScore += ((ac+1) * 10);
         }
       }
     }
   }
-  checkGravity();
+}
+
+function executeVerticalExplosions() {
   for (let i = 0; i < 6; i++) {
     let ac = 0;
     let check = false;
@@ -242,10 +242,18 @@ function checkExplosion() {
           ac = 0;
         }
       }       
-
     }
   }
-  checkGravity();
+}
+
+function executeExplosions() {
+  executeHorizontalExplosions();
+
+  applyGravity();
+
+  executeVerticalExplosions();
+
+  applyGravity();
 }
 
 function keyDown(e) {
@@ -322,7 +330,7 @@ function gameLoop() {
 
   drawScoreboard();
 
-  checkExplosion();
+  executeExplosions();
 
   // Print Coordinates
 
