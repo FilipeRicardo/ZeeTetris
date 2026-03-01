@@ -13,7 +13,17 @@ const initialPlayer = {
 let gameState = { ...initialGameState };
 let player = { ...initialPlayer };
 
-const colors = ["#0142fe","#ff3401","#fef52a","#01ed31","#ff8e0c","#ab4eff"];
+const CONFIG = {
+  BLOCK_SIZE: 50,
+  COLUMNS: 6,
+  ROWS_VISIBLE: 10, // Quantidade de blocos antes do Game Over
+  CANVAS_HEIGHT: 500,
+  COLORS: ["#0142fe","#ff3401","#fef52a","#01ed31","#ff8e0c","#ab4eff"],
+  get CANVAS_WIDTH() {
+    return this.COLUMNS * this.BLOCK_SIZE;
+  }
+};
+
 let blocks = [];
 let intGameLoop;
 let intCreateLine;
@@ -24,7 +34,7 @@ class Block {
     this.x = x;
     this.y = y;
     this.color = color;
-    this.size = 50;
+    this.size = CONFIG.BLOCK_SIZE;
   }
 
   draw(ctx) {
@@ -40,6 +50,8 @@ class Block {
 function initialize() {
   gameState.playerScore = 0;
   canvas = document.getElementById("canvas");
+  canvas.width = CONFIG.CANVAS_WIDTH;
+  canvas.height = CONFIG.CANVAS_HEIGHT;
   context = canvas.getContext("2d");        
   document.addEventListener('keydown', keyDown);
   intGameLoop = setInterval(gameLoop, 30);
@@ -63,23 +75,25 @@ function restartGame() {
 }
 
 function randomColor() {
-  return colors[Math.floor(Math.random() * colors.length)];
+  return CONFIG.COLORS[Math.floor(Math.random() * CONFIG.COLORS.length)];
 }
 
 function moveAim(x,y) {
-  player.aimX += x;
   // aim collision low
-  if (player.aimX < 0 || player.aimX > 200) {
+  player.aimX += x;
+  let maxX = (CONFIG.COLUMNS - 2) * CONFIG.BLOCK_SIZE;
+  if (player.aimX < 0 || player.aimX > maxX) {
     player.aimX -= x;
   }
   // aim collision side
   player.aimY += y;
-  if (player.aimY > 450) {
+  let maxY = CONFIG.CANVAS_HEIGHT - CONFIG.BLOCK_SIZE
+  if (player.aimY > maxY) {
     player.aimY -= y;
   }
   // aim collision top
   if (player.aimY < 0) {
-    player.aimY += 50;
+    player.aimY += CONFIG.BLOCK_SIZE;
   }
 }
 
@@ -100,10 +114,10 @@ function createLine(lines) {
       moveLines(5);
       let tempBlocks = [];
       let itemX = 0;
-      for (var i = 0; i < 6; i++) {
-        let block = new Block(itemX, 500, randomColor());
+      for (var i = 0; i < CONFIG.COLUMNS; i++) {
+        let block = new Block(itemX, CONFIG.CANVAS_HEIGHT, randomColor());
         tempBlocks.push(block);
-        itemX += 50;
+        itemX += CONFIG.BLOCK_SIZE;
       }
       blocks.push(tempBlocks);
     }
@@ -118,7 +132,7 @@ function reverseBlock() {
   for (let i = 0; i < blocks.length; i++) {
     for (let ii = 0; ii < blocks[i].length; ii++) {
       let block = blocks[i][ii];
-      if (block.y == player.aimY && block.x >= player.aimX && block.x <= player.aimX + 50) {
+      if (block.y == player.aimY && block.x >= player.aimX && block.x <= player.aimX + CONFIG.BLOCK_SIZE) {
         tempBlocks.push([i,ii]);
       }
     }
@@ -135,7 +149,7 @@ function reverseBlock() {
 }
 
 function applyGravity() {
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < CONFIG.COLUMNS; i++) {
     for (let ii = blocks.length-1; ii > 0; ii--) {
       let currentBlock = blocks[ii][i];
       let aboveBlock = blocks[ii - 1][i];
@@ -150,8 +164,8 @@ function applyGravity() {
 }
 
 function checkLive() {
-  if (blocks.length > 10) {
-    let position = blocks.length - 11;
+  if (blocks.length > CONFIG.ROWS_VISIBLE) {
+    let position = blocks.length - (CONFIG.ROWS_VISIBLE + 1);
     for (let i = 0; i < blocks[position].length; i++) {
       let block = blocks[position][i];
       if (block.color !== "") {
@@ -169,7 +183,6 @@ function explosion(arr) {
       let block = blocks[arr[i][0]][arr[i][1]];
       let x = block.x;
       let y = block.y;
-      //context.fillStyle = "rgba(128, 128, 128, " + alpha + ")";
       context.fillStyle = `rgba(128, 128, 128, ${alpha})`;
       context.fillRect(x, y, block.size, block.size);
       context.beginPath();
@@ -213,7 +226,7 @@ function executeHorizontalExplosions() {
 }
 
 function executeVerticalExplosions() {
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < CONFIG.COLUMNS; i++) {
     let ac = 0;
     let check = false;
     for (let ii = 0; ii < blocks.length; ii++) {
@@ -260,16 +273,16 @@ function executeExplosions() {
 function keyDown(e) {
   switch (e.keyCode) {
     case 37:
-      moveAim(-50,0); // left
+      moveAim(-CONFIG.BLOCK_SIZE,0); // left
       break;
     case 38:
-      moveAim(0,-50); // up
+      moveAim(0,-CONFIG.BLOCK_SIZE); // up
       break;
     case 39:
-      moveAim(50,0); // right
+      moveAim(CONFIG.BLOCK_SIZE,0); // right
       break;
     case 40:
-      moveAim(0,50); // down
+      moveAim(0,CONFIG.BLOCK_SIZE); // down
       break;
     case 32:
       reverseBlock(); // space
@@ -302,10 +315,16 @@ function drawBlocks() {
 }
 
 function drawAim() {
+  const lineWidth = 4
   context.beginPath();
-  context.lineWidth = "4";
+  context.lineWidth = lineWidth;
   context.strokeStyle = "black";
-  context.rect(player.aimX+2, player.aimY+2, 96, 46); 
+  context.rect(
+    player.aimX + (lineWidth / 2), 
+    player.aimY + (lineWidth / 2), 
+    (CONFIG.BLOCK_SIZE * 2) - lineWidth, 
+    CONFIG.BLOCK_SIZE - lineWidth
+  );
   context.stroke();
 }
 
@@ -313,17 +332,17 @@ function drawScoreboard() {
   context.fillStyle = "black";
   context.textAlign = 'right';
   context.font = "32pt Tahoma";
-  context.fillText(gameState.playerScore, canvas.width - 20, 50);
+  context.fillText(gameState.playerScore, CONFIG.CANVAS_WIDTH - 20, 50);
 }
 
 function gameLoop() {
 
   // Clear Screen
-  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.clearRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 
   // Draw Background
   context.fillStyle = "#e5e5e5";
-  context.fillRect(300, 0, 300, 500);
+  context.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 
   drawBlocks();
 
@@ -332,6 +351,9 @@ function gameLoop() {
   drawScoreboard();
 
   executeExplosions();
+
+  const centerX = CONFIG.CANVAS_WIDTH / 2;
+  const centerY = CONFIG.CANVAS_HEIGHT / 2;
 
   // Print Coordinates
 
@@ -348,7 +370,7 @@ function gameLoop() {
     context.fillStyle = "black";
     context.textAlign = 'center';
     context.font = "14pt Arial";
-    context.fillText("Press 'ENTER' to start", canvas.width / 2, canvas.height / 2);
+    context.fillText("Press 'ENTER' to start", centerX, centerY);
   }
 
   // Game Over
@@ -357,12 +379,12 @@ function gameLoop() {
     context.fillStyle = "black";
     context.textAlign = 'center';
     context.font = "32pt Arial";
-    context.fillText("Game Over", canvas.width / 2, canvas.height / 2);
+    context.fillText("Game Over", centerX, centerY);
 
     context.fillStyle = "black";
     context.textAlign = 'center';
     context.font = "14pt Arial";
-    context.fillText("Press 'backSpace' to restart game", canvas.width / 2, (canvas.height / 2) + 25);
+    context.fillText("Press 'backSpace' to restart game", centerX, (centerY) + 25);
 
     clearInterval(intGameLoop);
     clearInterval(intCreateLine);
