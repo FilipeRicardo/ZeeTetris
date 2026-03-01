@@ -1,7 +1,8 @@
 const initialGameState = {
   live: true,
   playerScore: 0,
-  loop: 0
+  loop: 0,
+  started: false
 };
 
 const initialPlayer = {
@@ -41,13 +42,13 @@ function initialize() {
   canvas = document.getElementById("canvas");
   context = canvas.getContext("2d");        
   document.addEventListener('keydown', keyDown);
-  gameLoop();
+  intGameLoop = setInterval(gameLoop, 30);
 }
 
 function startGame() {
-  if (blocks.length == 0) {
-    clearInterval(intGameLoop);
-    clearInterval(intCreateLine);
+  if (!gameState.started) {
+    gameState.started = true;
+
     createLine(1);
     intGameLoop = setInterval(gameLoop, 30);
     intCreateLine = setInterval(createLine, 1000);
