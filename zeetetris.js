@@ -24,6 +24,8 @@ const CONFIG = {
   }
 };
 
+let canvas;
+let context;
 let blocks = [];
 let intGameLoop;
 let intCreateLine;
@@ -52,7 +54,7 @@ function initialize() {
   canvas = document.getElementById("canvas");
   canvas.width = CONFIG.CANVAS_WIDTH;
   canvas.height = CONFIG.CANVAS_HEIGHT;
-  context = canvas.getContext("2d");        
+  context = canvas.getContext("2d");
   document.addEventListener('keydown', keyDown);
   intGameLoop = setInterval(gameLoop, 30);
 }
@@ -62,13 +64,14 @@ function startGame() {
     gameState.started = true;
 
     createLine(1);
-    intGameLoop = setInterval(gameLoop, 30);
+    clearInterval(intCreateLine);
     intCreateLine = setInterval(createLine, 1000);
   }
 }
 
 function restartGame() {
-  blocks.length = 0; // clear blocks
+  clearInterval(intCreateLine);
+  blocks.length = 0;
   gameState = { ...initialGameState };
   player = { ...initialPlayer };
   startGame();
@@ -176,32 +179,6 @@ function checkLive() {
   }
 }
 
-function explosion(arr) {
-  var alpha = 1;
-  let intervalo = setInterval(function(){
-    for (let i = 0; i < arr.length; i++) {
-      let block = blocks[arr[i][0]][arr[i][1]];
-      let x = block.x;
-      let y = block.y;
-      context.fillStyle = `rgba(128, 128, 128, ${alpha})`;
-      context.fillRect(x, y, block.size, block.size);
-      context.beginPath();
-      context.lineWidth = "1";
-      context.strokeStyle = "#404040";
-      context.rect(x, y, block.size, block.size);
-      context.stroke();
-    }
-    if(alpha < 0){
-      for (let i = 0; i < arr.length; i++) {
-        let block = blocks[arr[i][0]][arr[i][1]];
-        block.color = "";
-      }
-      clearInterval(intervalo);
-    }
-    alpha -= 0.1;
-  },1000);
-}
-
 function executeHorizontalExplosions() {
   for (let i = 0; i < blocks.length; i++) {
     let ac = 0;
@@ -209,7 +186,7 @@ function executeHorizontalExplosions() {
       if (ii > 0) {
         let currentBlock = blocks[i][ii];
         let previousBlock = blocks[i][ii - 1];
-        if (currentBlock.color === previousBlock.color && currentBlock.color !== "" && currentBlock.color !== "grey") {
+        if (currentBlock.color === previousBlock.color && currentBlock.color !== "") {
           ac += 1;
         } else {
           ac = 0;
@@ -271,6 +248,7 @@ function executeExplosions() {
 }
 
 function keyDown(e) {
+  e.preventDefault();
   switch (e.keyCode) {
     case 37:
       moveAim(-CONFIG.BLOCK_SIZE,0); // left
@@ -301,7 +279,7 @@ function drawBlocks() {
   for (var i = 0; i < blocks.length; i++) {
     for (var ii = 0; ii < blocks[i].length; ii++) {
       let block = blocks[i][ii];
-      if (block.color !== "" && block.color !== "grey") {
+      if (block.color !== "") {
         context.fillStyle = block.color;
         context.fillRect(block.x, block.y, block.size, block.size);
         context.beginPath();
@@ -386,7 +364,6 @@ function gameLoop() {
     context.font = "14pt Arial";
     context.fillText("Press 'backSpace' to restart game", centerX, (centerY) + 25);
 
-    clearInterval(intGameLoop);
     clearInterval(intCreateLine);
   }
 
