@@ -2,7 +2,9 @@ const initialGameState = {
   live: true,
   playerScore: 0,
   loop: 0,
-  started: false
+  started: false,
+  exploding: false,
+  explosionTimer: 0
 };
 
 const initialPlayer = {
@@ -19,6 +21,7 @@ const CONFIG = {
   ROWS_VISIBLE: 10, // Quantidade de blocos antes do Game Over
   CANVAS_HEIGHT: 500,
   COLORS: ["#0142fe","#ff3401","#fef52a","#01ed31","#ff8e0c","#ab4eff"],
+  EXPLOSION_FRAMES: 15,
   get CANVAS_WIDTH() {
     return this.COLUMNS * this.BLOCK_SIZE;
   }
@@ -37,6 +40,7 @@ class Block {
     this.y = y;
     this.color = color;
     this.size = CONFIG.BLOCK_SIZE;
+    this.marked = false;
   }
 
   draw(ctx) {
@@ -131,6 +135,7 @@ function createLine(lines) {
 }
 
 function reverseBlock() {
+  if (gameState.exploding) return;
   let tempBlocks = [];
   for (let i = 0; i < blocks.length; i++) {
     for (let ii = 0; ii < blocks[i].length; ii++) {
@@ -152,15 +157,15 @@ function reverseBlock() {
 }
 
 function applyGravity() {
-  for (let i = 0; i < CONFIG.COLUMNS; i++) {
-    for (let ii = blocks.length-1; ii > 0; ii--) {
-      let currentBlock = blocks[ii][i];
-      let aboveBlock = blocks[ii - 1][i];
-      if (ii > 0) {
-        if (currentBlock.color === "") {
-          currentBlock.color = aboveBlock.color;
-          aboveBlock.color = "";
+  for (let col = 0; col < CONFIG.COLUMNS; col++) {
+    let writePos = blocks.length - 1;
+    for (let row = blocks.length - 1; row >= 0; row--) {
+      if (blocks[row][col].color !== "") {
+        if (row !== writePos) {
+          blocks[writePos][col].color = blocks[row][col].color;
+          blocks[row][col].color = "";
         }
+        writePos--;
       }
     }
   }
@@ -186,14 +191,14 @@ function executeHorizontalExplosions() {
       if (ii > 0) {
         let currentBlock = blocks[i][ii];
         let previousBlock = blocks[i][ii - 1];
-        if (currentBlock.color === previousBlock.color && currentBlock.color !== "") {
+        if (currentBlock.color === previousBlock.color && currentBlock.color !== "" && !currentBlock.marked) {
           ac += 1;
         } else {
           ac = 0;
         }
         if (ac > 1) {
           for (let iii = 0; iii < ac + 1; iii++) {
-            blocks[i][ii - ac + iii].color = "";
+            blocks[i][ii - ac + iii].marked = true;
           }
           gameState.playerScore += ((ac+1) * 10);
         }
@@ -210,7 +215,7 @@ function executeVerticalExplosions() {
       if (ii > 0) {
         let currentBlock = blocks[ii][i];
         let previousBlock = blocks[ii - 1][i];
-        if (currentBlock.color === previousBlock.color && currentBlock.color !== "") {
+        if (currentBlock.color === previousBlock.color && currentBlock.color !== "" && !currentBlock.marked) {
           ac += 1;
           check = true;
         } else {
@@ -219,7 +224,7 @@ function executeVerticalExplosions() {
         if (ac > 1 && (!check || ii >= blocks.length - 1)) {
           let position = check ? ii : ii - 1;
           for (let iii = 0; iii < ac + 1; iii++) {
-            blocks[iii+(position-ac)][i].color = "";
+            blocks[iii+(position-ac)][i].marked = true;
           }
           if (ac + 1 === 3) {
             gameState.playerScore += ((ac + 1) * 10);
@@ -238,13 +243,23 @@ function executeVerticalExplosions() {
 }
 
 function executeExplosions() {
-  executeHorizontalExplosions();
+  if (gameState.exploding) return;
 
-  applyGravity();
+  executeHorizontalExplosions();
 
   executeVerticalExplosions();
 
-  applyGravity();
+  let hasMarked = false;
+  for (let i = 0; i < blocks.length && !hasMarked; i++) {
+    for (let ii = 0; ii < blocks[i].length && !hasMarked; ii++) {
+      if (blocks[i][ii].marked) hasMarked = true;
+    }
+  }
+
+  if (hasMarked) {
+    gameState.exploding = true;
+    gameState.explosionTimer = CONFIG.EXPLOSION_FRAMES;
+  }
 }
 
 function keyDown(e) {
@@ -279,7 +294,7 @@ function drawBlocks() {
   for (var i = 0; i < blocks.length; i++) {
     for (var ii = 0; ii < blocks[i].length; ii++) {
       let block = blocks[i][ii];
-      if (block.color !== "") {
+      if (block.color !== "" && !block.marked) {
         context.fillStyle = block.color;
         context.fillRect(block.x, block.y, block.size, block.size);
         context.beginPath();
@@ -287,6 +302,23 @@ function drawBlocks() {
         context.strokeStyle = "#ffffff";
         context.rect(block.x, block.y, block.size, block.size);
         context.stroke();
+      }
+    }
+  }
+
+  if (gameState.exploding) {
+    let progress = 1 - gameState.explosionTimer / CONFIG.EXPLOSION_FRAMES;
+    for (var i = 0; i < blocks.length; i++) {
+      for (var ii = 0; ii < blocks[i].length; ii++) {
+        let block = blocks[i][ii];
+        if (block.marked) {
+          let size = block.size * (1 - progress);
+          let offset = (block.size - size) / 2;
+          context.globalAlpha = 1 - progress;
+          context.fillStyle = "#ffffff";
+          context.fillRect(block.x + offset, block.y + offset, size, size);
+          context.globalAlpha = 1;
+        }
       }
     }
   }
@@ -328,7 +360,25 @@ function gameLoop() {
 
   drawScoreboard();
 
-  executeExplosions();
+  if (!gameState.exploding) {
+    applyGravity();
+    executeExplosions();
+  } else {
+    gameState.explosionTimer -= 1;
+    if (gameState.explosionTimer <= 0) {
+      for (let i = 0; i < blocks.length; i++) {
+        for (let ii = 0; ii < blocks[i].length; ii++) {
+          let block = blocks[i][ii];
+          if (block.marked) {
+            block.marked = false;
+            block.color = "";
+          }
+        }
+      }
+      applyGravity();
+      gameState.exploding = false;
+    }
+  }
 
   const centerX = CONFIG.CANVAS_WIDTH / 2;
   const centerY = CONFIG.CANVAS_HEIGHT / 2;
